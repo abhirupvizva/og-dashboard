@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Search, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,7 +40,7 @@ export default function Dashboard() {
   const [status, setStatus] = useState<string>("")
   const [selectedClient, setSelectedClient] = useState<string>("All")
 
-  // Fetch interviews with applied filters - optimized with useCallback and debouncing
+  // Fetch interviews
   const fetchInterviews = useCallback(async (page: number = 1, append: boolean = false) => {
     try {
       if (append) {
@@ -85,18 +85,35 @@ export default function Dashboard() {
     }
   }, [searchTerm, dateFrom, dateTo, assignedTo, excludeRounds, status, selectedClient])
 
-  // Initial load
   useEffect(() => {
     fetchInterviews(1, false)
   }, [])
 
-  // Function to apply filters manually
   const applyFilters = () => {
     fetchInterviews(1, false)
   }
 
   const uniqueClients = Array.from(new Set(interviews.map((i) => i["End Client"])))
   const uniqueRounds = Array.from(new Set(interviews.map((i) => i["actualRound"])))
+
+  // Calculate filtered interviews for table & round counts
+  const filteredInterviews = useMemo(
+    () =>
+      interviews.filter((interview) =>
+        !excludeRounds.includes(interview["actualRound"])
+      ),
+    [interviews, excludeRounds]
+  )
+
+  // Calculate counts for each unique round in filteredInterviews
+  const roundCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    filteredInterviews.forEach(interview => {
+      const round = interview["actualRound"]
+      counts[round] = (counts[round] || 0) + 1
+    })
+    return counts
+  }, [filteredInterviews])
 
   const handleExportCSV = () => {
     const headers = [
@@ -112,7 +129,7 @@ export default function Dashboard() {
     ]
     const csv = [
       headers.join(","),
-      ...interviews.map((i) =>
+      ...filteredInterviews.map((i) =>
         [
           i["Candidate Name"],
           i["End Client"],
@@ -143,6 +160,21 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-white mb-2">Interviews ({totalCount})</h1>
           <p className="text-slate-400">Manage and track interview schedules with advanced filters</p>
         </div>
+
+        {/* Round Counts Box */}
+        <Card className="bg-slate-900 border-slate-700 p-4 mb-3">
+          <div className={`flex flex-wrap gap-4`}>
+            {Object.entries(roundCounts).map(([round, count]) => (
+              <div
+                key={round}
+                className="rounded-lg px-4 py-2 bg-slate-800 text-white flex items-center shadow"
+              >
+                <span className="text-slate-300 mr-2">{round}:</span>
+                <span className="text-blue-400 font-semibold">{count}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         {/* Search and Filter Bar */}
         <Card className="bg-slate-800 border-slate-700 p-4 mb-6">
@@ -210,7 +242,7 @@ export default function Dashboard() {
         {!loading && !error && (
           <>
             <Card className="bg-slate-800 border-slate-700 overflow-hidden">
-              <InterviewTable interviews={interviews} />
+              <InterviewTable interviews={filteredInterviews} />
             </Card>
 
             {/* Load More Button */}
