@@ -1,8 +1,6 @@
 import { MongoClient } from "mongodb"
 
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://harshpsilverspace:space123@cluster0.jlncjtp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+const MONGODB_URI = process.env.MONGODB_URI
 
 let cachedClient: MongoClient | null = null
 
@@ -12,7 +10,7 @@ async function getMongoClient() {
   }
 
   try {
-    const client = new MongoClient(MONGODB_URI)
+    const client = new MongoClient(MONGODB_URI!)
     await client.connect()
     cachedClient = client
     return client

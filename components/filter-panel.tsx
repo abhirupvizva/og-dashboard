@@ -119,9 +119,9 @@ export default function FilterPanel({
       <div>
         <label className="text-xs text-slate-400 block mb-2">Exclude Rounds</label>
         <div className="flex flex-wrap gap-2">
-          {uniqueRounds.map((round) => (
+          {uniqueRounds.map((round, index) => (
             <button
-              key={round}
+              key={round ? `round-${round}` : `round-empty-${index}`}
               onClick={() => handleRoundToggle(round)}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 excludeRounds.includes(round)
@@ -129,7 +129,7 @@ export default function FilterPanel({
                   : "bg-slate-700 text-slate-300 hover:bg-slate-600"
               }`}
             >
-              {round}
+              {round || ""}
             </button>
           ))}
         </div>
