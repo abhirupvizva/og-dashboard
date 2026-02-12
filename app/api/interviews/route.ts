@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10)
     const limit = parseInt(searchParams.get("limit") || "100", 10)
     const skip = (page - 1) * limit
+    const sortParam = searchParams.get("sort")
 
     // Build MongoDB filter from query parameters
     const filter: any = {}
@@ -90,8 +91,51 @@ export async function GET(request: Request) {
     // Get total count for pagination
     const totalCount = await collection.countDocuments(filter)
 
-    // Fetch paginated results
-    const interviews = await collection.find(filter).skip(skip).limit(limit).toArray()
+    let interviews: any[] = []
+
+    if (sortParam === "receivedDateTime:-1") {
+      const pipeline = [
+        { $match: filter },
+        {
+          $addFields: {
+            replyDates: {
+              $map: {
+                input: { $ifNull: ["$replies", []] },
+                as: "r",
+                in: {
+                  $convert: {
+                    input: "$$r.receivedDateTime",
+                    to: "date",
+                    onError: null,
+                    onNull: null,
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            latestReplyDate: {
+              $max: {
+                $filter: {
+                  input: "$replyDates",
+                  as: "d",
+                  cond: { $ne: ["$$d", null] }
+                }
+              }
+            }
+          }
+        },
+        { $sort: { latestReplyDate: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { replyDates: 0 } },
+      ]
+      interviews = await collection.aggregate(pipeline).toArray()
+    } else {
+      interviews = await collection.find(filter).skip(skip).limit(limit).toArray()
+    }
 
     return Response.json({
       interviews,

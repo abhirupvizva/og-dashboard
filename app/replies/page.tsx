@@ -48,6 +48,28 @@ export default function RepliesPage() {
   const [hasNextPage, setHasNextPage] = useState(false)
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({})
 
+  function toTimestamp(dateTime?: string) {
+    if (!dateTime) return Number.NEGATIVE_INFINITY
+    const t = Date.parse(dateTime)
+    return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY
+  }
+
+  function formatToEST(dateTime?: string) {
+    if (!dateTime) return ""
+    const t = Date.parse(dateTime)
+    if (!Number.isFinite(t)) return dateTime
+    const date = new Date(t)
+    const formatted = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date)
+    return `${formatted} EST`
+  }
+
   const fetchInterviews = useCallback(async (page: number = 1, append: boolean = false) => {
     try {
       if (append) {
@@ -61,7 +83,8 @@ export default function RepliesPage() {
       const params = new URLSearchParams()
       params.append("page", page.toString())
       params.append("limit", "50")
-      params.append("hasReplies", "true") // Only fetch items with replies
+      // Avoid relying on backend hasReplies filter; filter on client
+      params.append("sort", "receivedDateTime:-1")
 
       if (searchTerm) {
         params.append("search", searchTerm)
@@ -71,10 +94,34 @@ export default function RepliesPage() {
       if (!response.ok) throw new Error("Failed to fetch replies")
       const data = await response.json()
 
+      const normalized = (data.interviews as Interview[])
+        .filter((i) => Array.isArray(i.replies) && i.replies.length > 0)
+        .map((i) => {
+          const repliesSorted = (i.replies || [])
+            .slice()
+            .sort((a, b) => toTimestamp(b.receivedDateTime) - toTimestamp(a.receivedDateTime))
+          return { ...i, replies: repliesSorted }
+        })
+
+      const byLatestReply = normalized.slice().sort((a, b) => {
+        const aLatest = toTimestamp(a.replies?.[0]?.receivedDateTime)
+        const bLatest = toTimestamp(b.replies?.[0]?.receivedDateTime)
+        return bLatest - aLatest
+      })
+
       if (append) {
-        setInterviews(prev => [...prev, ...data.interviews])
+        setInterviews(prev => {
+          const combined = [...prev, ...normalized]
+          return combined
+            .slice()
+            .sort((a, b) => {
+              const aLatest = toTimestamp(a.replies?.[0]?.receivedDateTime)
+              const bLatest = toTimestamp(b.replies?.[0]?.receivedDateTime)
+              return bLatest - aLatest
+            })
+        })
       } else {
-        setInterviews(data.interviews)
+        setInterviews(byLatestReply)
       }
 
       setHasNextPage(data.pagination.hasNext)
@@ -159,6 +206,14 @@ export default function RepliesPage() {
                           <span className="flex items-center gap-1">
                             <Tag className="h-3 w-3" /> {interview["End Client"]}
                           </span>
+                          {interview.replies && interview.replies.length > 0 && (
+                            <span className="flex items-center gap-1 whitespace-nowrap">
+                              <Calendar className="h-3 w-3" />
+                              <span>
+                                Last reply by <span className="text-foreground">{interview.replies[0].sender || "Unknown"}</span> at {formatToEST(interview.replies[0].receivedDateTime)}
+                              </span>
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                              <Badge
                                 variant="secondary"
@@ -193,7 +248,7 @@ export default function RepliesPage() {
                                   </CardDescription>
                                 </div>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                                  {reply.receivedDateTime}
+                                  {formatToEST(reply.receivedDateTime)}
                                 </span>
                              </div>
                           </CardHeader>
