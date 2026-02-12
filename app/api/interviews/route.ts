@@ -1,24 +1,5 @@
-import { MongoClient } from "mongodb"
-
-const MONGODB_URI = process.env.MONGODB_URI
-
-let cachedClient: MongoClient | null = null
-
-async function getMongoClient() {
-  if (cachedClient) {
-    return cachedClient
-  }
-
-  try {
-    const client = new MongoClient(MONGODB_URI!)
-    await client.connect()
-    cachedClient = client
-    return client
-  } catch (error) {
-    console.error("MongoDB connection error:", error)
-    throw error
-  }
-}
+import { getMongoClient } from "@/lib/mongodb"
+export const runtime = "nodejs"
 
 function convertDateFormat(dateStr: string): string {
   if (!dateStr) return ""
@@ -54,7 +35,16 @@ export async function GET(request: Request) {
 
     const assignedTo = searchParams.get("assignedTo")
     if (assignedTo && assignedTo.trim()) {
-      filter["assignedTo"] = { $regex: assignedTo, $options: "i" }
+      filter["assignedTo"] = assignedTo
+    }
+
+    // Multiple experts filter
+    const experts = searchParams.get("experts")
+    if (experts && experts.trim()) {
+      const expertsArray = experts.split(",").filter((e) => e.trim())
+      if (expertsArray.length > 0) {
+        filter["assignedTo"] = { $in: expertsArray }
+      }
     }
 
     const excludeRounds = searchParams.get("excludeRounds")
@@ -78,25 +68,30 @@ export async function GET(request: Request) {
 
     const search = searchParams.get("search")
     if (search && search.trim()) {
+      // Escape regex special characters to treat input as literal string
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       filter["$or"] = [
-        { "Candidate Name": { $regex: search, $options: "i" } },
-        { "End Client": { $regex: search, $options: "i" } },
+        { "Candidate Name": { $regex: escapedSearch, $options: "i" } },
+        { "End Client": { $regex: escapedSearch, $options: "i" } },
+        { "subject": { $regex: escapedSearch, $options: "i" } },
       ]
+    }
+
+    // New: Filter for replies existence
+    const hasReplies = searchParams.get("hasReplies")
+    if (hasReplies === "true") {
+      filter["replies"] = { $exists: true, $not: { $size: 0 } }
     }
 
     const mongoClient = await getMongoClient()
     const db = mongoClient.db("interviewSupport")
     const collection = db.collection("taskBody")
 
-    console.log("[v0] MongoDB filter query:", JSON.stringify(filter, null, 2))
-
     // Get total count for pagination
     const totalCount = await collection.countDocuments(filter)
 
     // Fetch paginated results
     const interviews = await collection.find(filter).skip(skip).limit(limit).toArray()
-
-    console.log("[v0] Fetched interviews count:", interviews.length, "Total:", totalCount)
 
     return Response.json({
       interviews,
