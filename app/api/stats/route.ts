@@ -30,6 +30,18 @@ export async function GET(request: Request) {
       filter["assignedTo"] = { $regex: assignedTo, $options: "i" }
     }
 
+    // Support multiple experts via "experts" query (comma-separated names)
+    const experts = searchParams.get("experts")
+    if (experts && experts.trim()) {
+      const expertsArray = experts
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean)
+      if (expertsArray.length > 0) {
+        filter["assignedTo"] = { $in: expertsArray }
+      }
+    }
+
     const status = searchParams.get("status")
     if (status && status.trim()) {
       filter["status"] = status
