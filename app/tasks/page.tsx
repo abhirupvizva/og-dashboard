@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import ExpertFilter from "@/src/components/expert-filter"
 import { useFilters } from "@/src/hooks/useCachedData"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type TaskRow = {
   _id: string
@@ -28,6 +29,7 @@ export default function TasksPage() {
   const [dateFrom, setDateFrom] = useState<string>("")
   const [dateTo, setDateTo] = useState<string>("")
   const [selectedExperts, setSelectedExperts] = useState<string[]>([])
+  const [status, setStatus] = useState<string>("all")
 
   const [rows, setRows] = useState<TaskRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -46,8 +48,9 @@ export default function TasksPage() {
     if (dateFrom) p.append("dateFrom", dateFrom)
     if (dateTo) p.append("dateTo", dateTo)
     if (selectedExperts.length > 0) p.append("experts", selectedExperts.join(","))
+    if (status && status !== "all") p.append("status", status)
     return p
-  }, [dateFrom, dateTo, selectedExperts])
+  }, [dateFrom, dateTo, selectedExperts, status])
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -80,6 +83,7 @@ export default function TasksPage() {
 
   const clearSelections = () => {
     setSelectedExperts([])
+    setStatus("all")
   }
 
   return (
@@ -96,6 +100,19 @@ export default function TasksPage() {
                 <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                 <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               </div>
+
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Scheduled">Scheduled</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                  <SelectItem value="Assigned">Assigned</SelectItem>
+                </SelectContent>
+              </Select>
 
               <ExpertFilter
                 experts={filterOptions.experts}
