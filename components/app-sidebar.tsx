@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LayoutDashboard, Users, Settings, BarChart3, FileText, Ban, Mail } from "lucide-react"
+import { LayoutDashboard, Users, Settings, BarChart3, FileText, Ban, Mail, ListChecks } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -63,6 +63,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <a href="/analytics">
                 <BarChart3 className="h-4 w-4" />
                 <span>Analytics</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <a href="/tasks">
+                <ListChecks className="h-4 w-4" />
+                <span>Tasks</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
