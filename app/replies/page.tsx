@@ -13,6 +13,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Switch } from "@/components/ui/switch"
 
 interface ReplyMail {
   sender?: string
@@ -47,6 +48,7 @@ export default function RepliesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({})
+  const [autoRefresh, setAutoRefresh] = useState(false)
 
   function toTimestamp(dateTime?: string) {
     if (!dateTime) return Number.NEGATIVE_INFINITY
@@ -142,6 +144,14 @@ export default function RepliesPage() {
     return () => clearTimeout(timer)
   }, [fetchInterviews])
 
+  useEffect(() => {
+    if (!autoRefresh) return
+    const id = setInterval(() => {
+      fetchInterviews(1, false)
+    }, 300000) // 5 minutes
+    return () => clearInterval(id)
+  }, [autoRefresh, fetchInterviews])
+
   const toggleItem = (id: string) => {
     setOpenItems(prev => ({ ...prev, [id]: !prev[id] }))
   }
@@ -154,17 +164,29 @@ export default function RepliesPage() {
           <p className="text-muted-foreground">Track communication threads and status updates.</p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search + Refresh */}
         <Card className="bg-card border-border shadow-sm">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 relative max-w-2xl">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by subject, candidate, or client..."
-                className="pl-10 bg-background border-input"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 relative flex-1 max-w-2xl">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by subject, candidate, or client..."
+                  className="pl-10 bg-background border-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch checked={autoRefresh} onCheckedChange={(v) => setAutoRefresh(!!v)} />
+                  <span className="text-sm text-muted-foreground">Auto Refresh (5m)</span>
+                </div>
+                <Button variant="outline" onClick={() => fetchInterviews(1, false)}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
