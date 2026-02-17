@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { Download, RefreshCw, Filter, Columns } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import InterviewTable, { ALL_COLUMNS, Interview } from "@/components/interview-table"
+import InterviewTable, { Interview } from "@/components/interview-table"
 import FilterPanel from "@/components/filter-panel"
 import DashboardLayout from "@/components/dashboard-layout"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -72,7 +72,6 @@ export default function Dashboard() {
     actualRound: true,
     status: true,
     feedback: true,
-    actions: true,
   })
 
   const getQueryParams = useCallback(() => {
@@ -166,7 +165,18 @@ export default function Dashboard() {
   }, [fetchInterviews])
 
   const handleExportCSV = useCallback(() => {
-    const headers = Object.values(ALL_COLUMNS)
+    const headers = [
+      "Candidate Name",
+      "End Client",
+      "Interview Round",
+      "Date",
+      "Start Time",
+      "End Time",
+      "Round #",
+      "Assigned To",
+      "Status",
+      "Feedback",
+    ]
     const csv = [
       headers.join(","),
       ...interviews.map((i) =>

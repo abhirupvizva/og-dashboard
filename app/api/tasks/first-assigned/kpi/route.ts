@@ -18,7 +18,6 @@ function normalizeMonth(input?: string | null) {
 }
 
 function buildSubjectRegex(month?: number | null, year?: number | null) {
-  // Build a regex that matches either month name or numeric date formats containing month and year
   const shortNames = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"]
   const fullNames = ["january","february","march","april","may","june","july","august","september","october","november","december"]
   const parts: string[] = []
@@ -58,7 +57,6 @@ export async function GET(request: Request) {
       baseFilter["status"] = status
     }
 
-    // Exclude rounds (use actualRound only)
     const excludeRoundsParam = searchParams.get("excludeRounds")
     if (excludeRoundsParam && excludeRoundsParam.trim()) {
       const rounds = excludeRoundsParam
@@ -70,7 +68,6 @@ export async function GET(request: Request) {
       }
     }
 
-    // Year/month from subject line
     const yearParam = searchParams.get("year")
     const monthParam = searchParams.get("month") || searchParams.get("subjectMonth")
     const year = yearParam && /^\d{4}$/.test(yearParam) ? parseInt(yearParam, 10) : null
@@ -81,24 +78,25 @@ export async function GET(request: Request) {
       baseFilter["subject"] = { $regex: subjectPattern, $options: "i" }
     }
 
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10) || 50, 200)
-
     const mongoClient = await getMongoClient()
     const db = mongoClient.db("interviewSupport")
     const collection = db.collection("taskBody")
 
-    // Fetch necessary fields
     const docs = await collection
-      .find(baseFilter, { projection: { subject: 1, status: 1, replies: 1 } })
+      .find(baseFilter, { projection: { subject: 1, status: 1, replies: 1, actualRound: 1 } })
       .sort({ _id: -1 })
       .toArray()
 
-    // Compute first reply and ensure it's tagged
-    const itemsRaw = []
+    const expertsFilter = (searchParams.get("experts") || "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean)
+
+    const counts: Record<string, number> = {}
+
     for (const d of docs) {
       const replies = Array.isArray(d.replies) ? d.replies : []
       if (replies.length === 0) continue
-      // Pick earliest by receivedDateTime if available, else first element
       let first = replies[0]
       let minTs = parseTs(replies[0]?.receivedDateTime) ?? Infinity
       for (let i = 1; i < replies.length; i++) {
@@ -109,53 +107,34 @@ export async function GET(request: Request) {
         }
       }
       const body = String(first?.body || "")
-      // Prefer email inside brackets after 'Assigned To:' pattern
-      let firstAssignedExpert: string | null = null
+      let expert: string | null = null
       const emailBracket = body.match(/Assigned To:[^\[]*\[([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\]/i)
       if (emailBracket && emailBracket[1]) {
-        firstAssignedExpert = emailBracket[1].trim()
+        expert = emailBracket[1].trim()
       } else {
-        // Fallback: any email after 'Assigned To:' line
         const afterAssigned = body.split(/Assigned To:/i)[1] || ""
         const emailAny = afterAssigned.match(/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i)
         if (emailAny && emailAny[1]) {
-          firstAssignedExpert = emailAny[1].trim()
+          expert = emailAny[1].trim()
         } else {
-          // Fallback: name after @ mention
           const nameMention = body.match(/Assigned To:\s*@([^\[\]\r\n]+)/i)
           if (nameMention && nameMention[1]) {
-            firstAssignedExpert = nameMention[1].trim()
+            expert = nameMention[1].trim()
           }
         }
       }
-      if (!firstAssignedExpert) {
-        // First reply does not tag an expert → skip
-        continue
-      }
-      itemsRaw.push({
-        _id: d._id,
-        subject: d.subject,
-        status: d.status,
-        firstAssignedExpert,
-      })
+      if (!expert) continue
+      if (expertsFilter.length > 0 && !expertsFilter.includes(expert)) continue
+      counts[expert] = (counts[expert] || 0) + 1
     }
 
-    // Optional expert filter should apply to firstAssignedExpert
-    const experts = (searchParams.get("experts") || "")
-      .split(",")
-      .map((e) => e.trim())
-      .filter(Boolean)
-
-    const filtered = experts.length > 0
-      ? itemsRaw.filter((i) => experts.includes(i.firstAssignedExpert))
-      : itemsRaw
-
-    const total = filtered.length
-    const items = filtered.slice(0, limit)
+    const items = Object.entries(counts)
+      .map(([expert, count]) => ({ expert, count }))
+      .sort((a, b) => b.count - a.count || a.expert.localeCompare(b.expert))
+    const total = items.reduce((s, x) => s + x.count, 0)
 
     return Response.json({ total, items })
-  } catch (error) {
-    console.error("First Assigned API Error:", error)
-    return Response.json({ error: "Failed to fetch first assigned list" }, { status: 500 })
+  } catch {
+    return Response.json({ total: 0, items: [] }, { status: 500 })
   }
 }

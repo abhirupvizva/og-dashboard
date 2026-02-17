@@ -13,9 +13,11 @@ interface ExpertFilterProps {
   selectedExperts: string[]
   onExpertChange: (experts: string[]) => void
   loading?: boolean
+  compact?: boolean
+  className?: string
 }
 
-export default function ExpertFilter({ experts, selectedExperts, onExpertChange, loading }: ExpertFilterProps) {
+export default function ExpertFilter({ experts, selectedExperts, onExpertChange, loading, compact, className }: ExpertFilterProps) {
   const [open, setOpen] = useState(false)
 
   const handleExpertToggle = (expert: string) => {
@@ -35,20 +37,22 @@ export default function ExpertFilter({ experts, selectedExperts, onExpertChange,
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-medium text-muted-foreground">Experts</label>
-        {selectedExperts.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 text-xs text-muted-foreground hover:text-foreground"
-            onClick={clearAllExperts}
-          >
-            Clear all
-          </Button>
-        )}
-      </div>
+    <div className={cn(compact ? "" : "space-y-2", className)}>
+      {!compact && (
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-muted-foreground">Experts</label>
+          {selectedExperts.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-muted-foreground hover:text-foreground"
+              onClick={clearAllExperts}
+            >
+              Clear all
+            </Button>
+          )}
+        </div>
+      )}
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -56,7 +60,7 @@ export default function ExpertFilter({ experts, selectedExperts, onExpertChange,
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between bg-background border-input"
+            className={cn("justify-between bg-background border-input", compact ? "w-full" : "w-full")}
             disabled={loading}
           >
             <span className="truncate">
@@ -108,7 +112,7 @@ export default function ExpertFilter({ experts, selectedExperts, onExpertChange,
         </PopoverContent>
       </Popover>
 
-      {selectedExperts.length > 0 && (
+      {!compact && selectedExperts.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {selectedExperts.slice(0, 3).map((expert) => (
             <Badge key={expert} variant="secondary" className="text-xs">

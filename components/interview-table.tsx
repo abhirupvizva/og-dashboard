@@ -1,6 +1,5 @@
 "use client"
 
-import { Eye, Save, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useState, memo } from "react"
@@ -65,7 +64,6 @@ export const ALL_COLUMNS = {
   assignedTo: "Assigned To",
   status: "Status",
   feedback: "Feedback",
-  actions: "Actions",
 }
 
 export default memo(function InterviewTable({ interviews, visibleColumns }: InterviewTableProps) {
@@ -98,7 +96,6 @@ export default memo(function InterviewTable({ interviews, visibleColumns }: Inte
             {isVisible("assignedTo") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned To</th>}
             {isVisible("status") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>}
             {isVisible("feedback") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Feedback</th>}
-            {isVisible("actions") && <th className="px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-border bg-card">
@@ -175,21 +172,6 @@ export default memo(function InterviewTable({ interviews, visibleColumns }: Inte
                     </Dialog>
                     )
                   })()}
-                </td>
-              )}
-              {isVisible("actions") && (
-                <td className="px-6 py-4 text-right text-sm">
-                  <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:bg-green-500/10 hover:text-green-500">
-                      <Save className="w-4 h-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
                 </td>
               )}
             </tr>

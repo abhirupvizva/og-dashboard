@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Download, FileSpreadsheet, Loader2 } from "lucide-react"
-import { ALL_COLUMNS } from "@/components/interview-table"
 
 export default function ReportsPage() {
   const [loading, setLoading] = useState(false)
@@ -34,7 +33,18 @@ export default function ReportsPage() {
       }
 
       // Convert to CSV
-      const headers = Object.values(ALL_COLUMNS)
+      const headers = [
+        "Candidate Name",
+        "End Client",
+        "Interview Round",
+        "Date",
+        "Start Time",
+        "End Time",
+        "Round #",
+        "Assigned To",
+        "Status",
+        "Feedback",
+      ]
       const csvContent = [
         headers.join(","),
         ...data.interviews.map((i: any) =>

@@ -89,7 +89,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
               <a href="/first-assigned">
                 <UserCheck className="h-4 w-4" />
-                <span>First Assigned</span>
+                <span>KPI COUNT</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
