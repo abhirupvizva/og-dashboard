@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LayoutDashboard, Users, Settings, BarChart3, FileText, Mail, ListChecks, Inbox, UserCheck } from "lucide-react"
+import { LayoutDashboard, Users, Settings, BarChart3, FileText, Mail, ListChecks, Inbox, UserCheck, Tags } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -51,36 +51,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/experts">
-                <Users className="h-4 w-4" />
-                <span>Experts</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/analytics">
-                <BarChart3 className="h-4 w-4" />
-                <span>Analytics</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
               <a href="/tasks">
                 <ListChecks className="h-4 w-4" />
                 <span>Tasks</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/buckets">
-                <Inbox className="h-4 w-4" />
-                <span>Buckets</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -99,6 +72,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <a href="/reports">
                 <FileText className="h-4 w-4" />
                 <span>Reports</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <a href="/tags">
+                <Tags className="h-4 w-4" />
+                <span>TAG</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
