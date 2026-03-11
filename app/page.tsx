@@ -405,7 +405,7 @@ export default function Dashboard() {
                      </div>
                   ) : (
                     <div className="space-y-4">
-                      {stats?.expertStats.map((expert, index) => (
+                      {stats?.expertStats.map((expert: any, index: number) => (
                         <div key={index} className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors group">
                           <div className="flex items-center gap-3">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary border border-border text-xs font-bold text-secondary-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">

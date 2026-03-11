@@ -66,7 +66,7 @@ function Item({
       data-variant={variant}
       data-size={size}
       className={cn(itemVariants({ variant, size, className }))}
-      {...props}
+      {...(props as any)}
     />
   )
 }

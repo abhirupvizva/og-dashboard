@@ -1,57 +1,128 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useState, memo } from "react"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useState, memo } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ReplyMail {
-  sender?: string
-  to?: string
-  cc?: string
-  receivedDateTime?: string
-  subject?: string
-  body?: string
+  sender?: string;
+  to?: string;
+  cc?: string;
+  receivedDateTime?: string;
+  subject?: string;
+  body?: string;
+}
+
+function normalizeBody(body?: string) {
+  if (!body) return "";
+  return body.replace(/\r\n/g, "\n").trim();
+}
+
+function splitParagraphs(text: string) {
+  const normalized = normalizeBody(text);
+  if (!normalized) return [];
+  return normalized.split(/\n\s*\n+/g);
+}
+
+function linkify(text: string) {
+  if (!text) return text;
+
+  const parts: Array<string | { kind: "url" | "email"; value: string }> = [];
+  const pattern =
+    /((?:https?:\/\/|www\.)[^\s<]+)|([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi;
+
+  let lastIndex = 0;
+  for (const match of text.matchAll(pattern)) {
+    const idx = match.index ?? 0;
+    if (idx > lastIndex) parts.push(text.slice(lastIndex, idx));
+    const url = match[1];
+    const email = match[2];
+    if (url) parts.push({ kind: "url", value: url });
+    else if (email) parts.push({ kind: "email", value: email });
+    lastIndex = idx + match[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+
+  return parts.map((p, i) => {
+    if (typeof p === "string") return p;
+    if (p.kind === "email") {
+      return (
+        <a
+          key={i}
+          href={`mailto:${p.value}`}
+          className="text-primary underline underline-offset-2 break-all">
+          {p.value}
+        </a>
+      );
+    }
+
+    const href = p.value.startsWith("http") ? p.value : `https://${p.value}`;
+    return (
+      <a
+        key={i}
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="text-primary underline underline-offset-2 break-all">
+        {p.value}
+      </a>
+    );
+  });
 }
 
 function toTimestamp(dateTime?: string) {
-  if (!dateTime) return Number.NEGATIVE_INFINITY
-  const t = Date.parse(dateTime)
-  return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY
+  if (!dateTime) return Number.NEGATIVE_INFINITY;
+  const t = Date.parse(dateTime);
+  return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY;
 }
 
 function pickReply(replies?: ReplyMail[]) {
-  if (!replies || replies.length === 0) return null
+  if (!replies || replies.length === 0) return null;
   const items = replies.map((reply, index) => ({
     reply,
     index,
     ts: toTimestamp(reply.receivedDateTime),
     hasBody: Boolean(reply.body && reply.body.trim()),
-  }))
-  const candidates = items.some((i) => i.hasBody) ? items.filter((i) => i.hasBody) : items
-  candidates.sort((a, b) => b.ts - a.ts || b.index - a.index)
-  return candidates[0]?.reply ?? null
+  }));
+  const candidates = items.some((i) => i.hasBody)
+    ? items.filter((i) => i.hasBody)
+    : items;
+  candidates.sort((a, b) => b.ts - a.ts || b.index - a.index);
+  return candidates[0]?.reply ?? null;
 }
 
 export interface Interview {
-  _id: string
-  subject: string
-  "Candidate Name": string
-  "End Client": string
-  "Interview Round": string
-  "Date of Interview": string
-  "Start Time Of Interview": string
-  "End Time Of Interview": string
-  actualRound: string
-  assignedTo?: string
-  status?: string
-  replies?: ReplyMail[]
-  feedback?: string
+  _id: string;
+  subject: string;
+  body?: string;
+  sender?: string;
+  to?: string;
+  cc?: string;
+  receivedDateTime?: string;
+  "Candidate Name": string;
+  "End Client": string;
+  "Interview Round": string;
+  "Date of Interview": string;
+  "Start Time Of Interview": string;
+  "End Time Of Interview": string;
+  actualRound: string;
+  assignedTo?: string;
+  status?: string;
+  replies?: ReplyMail[];
+  feedback?: string;
 }
 
 interface InterviewTableProps {
-  interviews: Interview[]
-  visibleColumns?: Record<string, boolean>
+  interviews: Interview[];
+  visibleColumns?: Record<string, boolean>;
 }
 
 export const ALL_COLUMNS = {
@@ -64,22 +135,27 @@ export const ALL_COLUMNS = {
   assignedTo: "Assigned To",
   status: "Status",
   feedback: "Feedback",
-}
+};
 
-export default memo(function InterviewTable({ interviews, visibleColumns }: InterviewTableProps) {
-  const [openDialogId, setOpenDialogId] = useState<string | null>(null)
+export default memo(function InterviewTable({
+  interviews,
+  visibleColumns,
+}: InterviewTableProps) {
+  const [openDialogId, setOpenDialogId] = useState<string | null>(null);
 
   const isVisible = (key: string) => {
-    if (!visibleColumns) return true
-    return visibleColumns[key] !== false
-  }
+    if (!visibleColumns) return true;
+    return visibleColumns[key] !== false;
+  };
 
   if (interviews.length === 0) {
     return (
       <div className="p-12 text-center bg-card rounded-lg border border-border border-dashed shadow-sm">
-        <p className="text-muted-foreground">No interviews found matching your filters.</p>
+        <p className="text-muted-foreground">
+          No interviews found matching your filters.
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -87,44 +163,108 @@ export default memo(function InterviewTable({ interviews, visibleColumns }: Inte
       <table className="w-full">
         <thead className="bg-muted/50 backdrop-blur">
           <tr className="border-b border-border">
-            {isVisible("candidateName") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Candidate Name</th>}
-            {isVisible("endClient") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">End Client</th>}
-            {isVisible("interviewRound") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interview Round</th>}
-            {isVisible("date") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>}
-            {isVisible("time") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Time</th>}
-            {isVisible("actualRound") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Round #</th>}
-            {isVisible("assignedTo") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned To</th>}
-            {isVisible("status") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>}
-            {isVisible("feedback") && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Feedback</th>}
+            {isVisible("candidateName") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Candidate Name
+              </th>
+            )}
+            {isVisible("endClient") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                End Client
+              </th>
+            )}
+            {isVisible("interviewRound") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Interview Round
+              </th>
+            )}
+            {isVisible("date") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Date
+              </th>
+            )}
+            {isVisible("time") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Time
+              </th>
+            )}
+            {isVisible("actualRound") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Round #
+              </th>
+            )}
+            {isVisible("assignedTo") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Assigned To
+              </th>
+            )}
+            {isVisible("status") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Status
+              </th>
+            )}
+            {isVisible("feedback") && (
+              <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Feedback
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-border bg-card">
           {interviews.map((interview, idx) => (
-            <tr key={interview._id} className="hover:bg-muted/50 transition-colors group">
-              {isVisible("candidateName") && <td className="px-6 py-4 text-sm text-foreground font-medium">{interview["Candidate Name"]}</td>}
-              {isVisible("endClient") && <td className="px-6 py-4 text-sm text-muted-foreground">{interview["End Client"]}</td>}
-              {isVisible("interviewRound") && <td className="px-6 py-4 text-sm text-muted-foreground">{interview["Interview Round"]}</td>}
-              {isVisible("date") && <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">{interview["Date of Interview"]}</td>}
-              {isVisible("time") && <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">{interview["Start Time Of Interview"]} - {interview["End Time Of Interview"]}</td>}
+            <tr
+              key={interview._id}
+              className="hover:bg-muted/50 transition-colors group">
+              {isVisible("candidateName") && (
+                <td className="px-6 py-4 text-sm text-foreground font-medium">
+                  {interview["Candidate Name"]}
+                </td>
+              )}
+              {isVisible("endClient") && (
+                <td className="px-6 py-4 text-sm text-muted-foreground">
+                  {interview["End Client"]}
+                </td>
+              )}
+              {isVisible("interviewRound") && (
+                <td className="px-6 py-4 text-sm text-muted-foreground">
+                  {interview["Interview Round"]}
+                </td>
+              )}
+              {isVisible("date") && (
+                <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">
+                  {interview["Date of Interview"]}
+                </td>
+              )}
+              {isVisible("time") && (
+                <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">
+                  {interview["Start Time Of Interview"]} -{" "}
+                  {interview["End Time Of Interview"]}
+                </td>
+              )}
               {isVisible("actualRound") && (
                 <td className="px-6 py-4 text-sm">
-                  <Badge variant="outline" className="bg-background text-foreground border-border">
+                  <Badge
+                    variant="outline"
+                    className="bg-background text-foreground border-border">
                     {interview.actualRound}
                   </Badge>
                 </td>
               )}
-              {isVisible("assignedTo") && <td className="px-6 py-4 text-sm text-muted-foreground">{interview.assignedTo || "-"}</td>}
+              {isVisible("assignedTo") && (
+                <td className="px-6 py-4 text-sm text-muted-foreground">
+                  {interview.assignedTo || "-"}
+                </td>
+              )}
               {isVisible("status") && (
                 <td className="px-6 py-4 text-sm">
                   <Badge
                     variant="secondary"
                     className={`
-                      ${interview.status === 'Completed' ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20' : ''}
-                      ${interview.status === 'Cancelled' ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20' : ''}
-                      ${interview.status === 'Rescheduled' ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 border-orange-500/20' : ''}
-                      ${!['Completed', 'Cancelled', 'Rescheduled'].includes(interview.status || '') ? 'bg-secondary text-secondary-foreground' : ''}
-                    `}
-                  >
+                      ${interview.status === "Completed" ? "bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20" : ""}
+                      ${interview.status === "Cancelled" ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20" : ""}
+                      ${interview.status === "Rescheduled" ? "bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 border-orange-500/20" : ""}
+                      ${!["Completed", "Cancelled", "Rescheduled"].includes(interview.status || "") ? "bg-secondary text-secondary-foreground" : ""}
+                    `}>
                     {interview.status || "Pending"}
                   </Badge>
                 </td>
@@ -132,45 +272,152 @@ export default memo(function InterviewTable({ interviews, visibleColumns }: Inte
               {isVisible("feedback") && (
                 <td className="px-6 py-4 text-sm text-muted-foreground">
                   {(() => {
-                    const displayReply = pickReply(interview.replies)
+                    const displayReply = pickReply(interview.replies);
                     if (!displayReply) {
-                      return <span className="text-muted-foreground/50 text-xs italic">No feedback</span>
+                      return (
+                        <span className="text-muted-foreground/50 text-xs italic">
+                          No feedback
+                        </span>
+                      );
                     }
+
+                    const dialogTitle =
+                      interview.subject?.trim() ||
+                      displayReply.subject?.trim() ||
+                      "Mail";
+                    const replyBody = normalizeBody(displayReply.body);
+                    const taskBody = normalizeBody(interview.body);
+                    const taskBodyParagraphs = splitParagraphs(taskBody);
                     return (
-                      <Dialog open={openDialogId === interview._id} onOpenChange={(open) => setOpenDialogId(open ? interview._id : null)}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-7 text-xs border-border bg-background text-primary hover:bg-primary/10 hover:text-primary hover:border-primary/20">
-                          View Mail
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-popover border-border text-popover-foreground w-[95vw] max-w-6xl">
-                        <DialogHeader>
-                          <DialogTitle className="text-lg font-semibold text-foreground border-b border-border pb-2">
-                            {displayReply.subject?.trim() ? displayReply.subject : "Mail Body"}
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="mt-4 space-y-4">
-                          <div className="grid grid-cols-[60px_1fr] gap-2 text-sm">
-                            <span className="text-muted-foreground font-medium">From:</span>
-                            <span className="text-foreground break-all">{displayReply.sender || "Unknown"}</span>
+                      <Dialog
+                        open={openDialogId === interview._id}
+                        onOpenChange={(open) =>
+                          setOpenDialogId(open ? interview._id : null)
+                        }>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs border-border bg-background text-primary hover:bg-primary/10 hover:text-primary hover:border-primary/20">
+                            View Mail
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-popover border-border text-popover-foreground w-[95vw] max-w-6xl">
+                          <DialogHeader>
+                            <DialogTitle className="text-lg font-semibold text-foreground border-b border-border pb-2">
+                              {dialogTitle}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <Tabs
+                            defaultValue="reply"
+                            className="mt-4 flex flex-row gap-4">
+                            <TabsList className="h-auto w-40 flex-col items-stretch p-1">
+                              <TabsTrigger
+                                value="reply"
+                                className="w-full justify-start">
+                                Reply
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="body"
+                                className="w-full justify-start">
+                                Body View
+                              </TabsTrigger>
+                            </TabsList>
+                            <div className="flex-1 min-w-0">
+                              <TabsContent
+                                value="reply"
+                                className="m-0 space-y-4">
+                                <div className="grid grid-cols-[60px_1fr] gap-2 text-sm">
+                                  <span className="text-muted-foreground font-medium">
+                                    From:
+                                  </span>
+                                  <span className="text-foreground break-all">
+                                    {displayReply.sender || "Unknown"}
+                                  </span>
 
-                            <span className="text-muted-foreground font-medium">To:</span>
-                            <span className="text-foreground break-all">{displayReply.to || "Unknown"}</span>
+                                  <span className="text-muted-foreground font-medium">
+                                    To:
+                                  </span>
+                                  <span className="text-foreground break-all">
+                                    {displayReply.to || "Unknown"}
+                                  </span>
 
-                            <span className="text-muted-foreground font-medium">CC:</span>
-                            <span className="text-foreground break-all">{displayReply.cc || "None"}</span>
+                                  <span className="text-muted-foreground font-medium">
+                                    CC:
+                                  </span>
+                                  <span className="text-foreground break-all">
+                                    {displayReply.cc || "None"}
+                                  </span>
 
-                            <span className="text-muted-foreground font-medium">Date:</span>
-                            <span className="text-foreground">{displayReply.receivedDateTime || "Unknown"}</span>
-                          </div>
+                                  <span className="text-muted-foreground font-medium">
+                                    Date:
+                                  </span>
+                                  <span className="text-foreground">
+                                    {displayReply.receivedDateTime || "Unknown"}
+                                  </span>
+                                </div>
 
-                          <div className="bg-muted/50 rounded-lg p-4 border border-border text-sm leading-relaxed text-foreground max-h-[60vh] overflow-y-auto whitespace-pre-wrap font-mono">
-                            {displayReply.body}
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    )
+                                <div className="bg-muted/50 rounded-lg p-4 border border-border text-sm leading-relaxed text-foreground max-h-[60vh] overflow-y-auto whitespace-pre-wrap font-mono">
+                                  {replyBody || "No content"}
+                                </div>
+                              </TabsContent>
+
+                              <TabsContent
+                                value="body"
+                                className="m-0 space-y-4">
+                                <div className="grid grid-cols-[60px_1fr] gap-2 text-sm">
+                                  <span className="text-muted-foreground font-medium">
+                                    From:
+                                  </span>
+                                  <span className="text-foreground break-all">
+                                    {interview.sender || "Unknown"}
+                                  </span>
+
+                                  <span className="text-muted-foreground font-medium">
+                                    To:
+                                  </span>
+                                  <span className="text-foreground break-all">
+                                    {interview.to || "Unknown"}
+                                  </span>
+
+                                  <span className="text-muted-foreground font-medium">
+                                    CC:
+                                  </span>
+                                  <span className="text-foreground break-all">
+                                    {interview.cc || "None"}
+                                  </span>
+
+                                  <span className="text-muted-foreground font-medium">
+                                    Date:
+                                  </span>
+                                  <span className="text-foreground">
+                                    {interview.receivedDateTime || "Unknown"}
+                                  </span>
+                                </div>
+
+                                <div className="bg-background rounded-lg p-4 border border-border max-h-[60vh] overflow-y-auto">
+                                  {taskBodyParagraphs.length > 0 ? (
+                                    <div className="space-y-4">
+                                      {taskBodyParagraphs.map((p, i) => (
+                                        <p
+                                          key={i}
+                                          className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                                          {linkify(p)}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                      No content
+                                    </div>
+                                  )}
+                                </div>
+                              </TabsContent>
+                            </div>
+                          </Tabs>
+                        </DialogContent>
+                      </Dialog>
+                    );
                   })()}
                 </td>
               )}
@@ -179,5 +426,5 @@ export default memo(function InterviewTable({ interviews, visibleColumns }: Inte
         </tbody>
       </table>
     </div>
-  )
-})
+  );
+});
