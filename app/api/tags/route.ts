@@ -72,7 +72,7 @@ export async function GET(request: Request) {
                       input: {
                         $regexFindAll: {
                           input: "$$this.body",
-                          regex: /Tag:\s*@[^\[]+\[([^\]]+)\]/i
+                          regex: /Tag\s*:\s*@[^\[]+\[([^\]]+)\]/i
                         }
                       },
                       as: "match",
