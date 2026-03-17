@@ -1,6 +1,16 @@
 import { getMongoClient } from "@/lib/mongodb"
+import { getMockEmailsForTeam } from "@/src/data/mock-teams"
 
 export const runtime = "nodejs"
+
+function parseYmdToDate(s: string | null, endOfDay: boolean) {
+  if (!s) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null
+  const d = new Date(`${s}T00:00:00.000Z`)
+  if (!Number.isFinite(d.getTime())) return null
+  if (endOfDay) d.setUTCHours(23, 59, 59, 999)
+  return d
+}
 
 // Helper function to extract name from email
 function extractNameFromEmail(email: string): string {
@@ -24,6 +34,16 @@ export async function GET(request: Request) {
     const taggedExpertFilter = searchParams.get("taggedExpert")
     const year = searchParams.get("year")
     const month = searchParams.get("month")
+    const team = searchParams.get("team")
+    const teamsParam = searchParams.get("teams")
+    const teams = [
+      ...(teamsParam ? teamsParam.split(",").map((s) => s.trim()).filter(Boolean) : []),
+      ...searchParams.getAll("team").map((s) => s.trim()).filter(Boolean),
+    ]
+    const dateFromParam = searchParams.get("dateFrom")
+    const dateToParam = searchParams.get("dateTo")
+    const dateFrom = parseYmdToDate(dateFromParam, false)
+    const dateTo = parseYmdToDate(dateToParam, true)
 
     const mongoClient = await getMongoClient()
     const db = mongoClient.db("interviewSupport")
@@ -51,9 +71,56 @@ export async function GET(request: Request) {
       initialMatch.assignedTo = mainExpertFilter
     }
 
+    const teamsToUse = teams.length > 0 ? teams : team && team !== "all" ? [team] : []
+    if (teamsToUse.length > 0) {
+      const emails = Array.from(
+        new Set(teamsToUse.flatMap((t) => getMockEmailsForTeam(t)).filter(Boolean))
+      )
+      if (emails.length === 0) {
+        return Response.json({
+          interviews: [],
+          pagination: { page, limit, totalCount: 0, totalPages: 0 },
+        })
+      }
+      const emailRegexes = emails.map((e) => new RegExp(`^${e}$`, "i"))
+      if (mainExpertFilter && mainExpertFilter !== "all") {
+        const main = mainExpertFilter.trim().toLowerCase()
+        const ok = emails.some((e) => e.toLowerCase() === main)
+        if (!ok) {
+          return Response.json({
+            interviews: [],
+            pagination: { page, limit, totalCount: 0, totalPages: 0 },
+          })
+        }
+      } else {
+        initialMatch.assignedTo = { $in: emailRegexes }
+      }
+    }
+
     const pipeline: any[] = [
       { $match: initialMatch },
+      {
+        $addFields: {
+          interviewDate: {
+            $dateFromString: {
+              dateString: "$Date of Interview",
+              format: "%m/%d/%Y",
+              onError: null,
+              onNull: null,
+            },
+          },
+        },
+      },
+    ]
 
+    if (dateFrom || dateTo) {
+      const dateMatch: any = { interviewDate: { $ne: null } }
+      if (dateFrom) dateMatch.interviewDate.$gte = dateFrom
+      if (dateTo) dateMatch.interviewDate.$lte = dateTo
+      pipeline.push({ $match: dateMatch })
+    }
+
+    pipeline.push(
       // 2. Identify Main Expert and Tagged Experts
       {
         $addFields: {
@@ -111,7 +178,7 @@ export async function GET(request: Request) {
 
       // 4. Must have at least one tagged expert
       { $match: { "taggedEmails.0": { $exists: true } } }
-    ]
+    )
 
     // 5. Apply Tagged Expert Filter if requested
     if (taggedExpertFilter && taggedExpertFilter !== "all") {

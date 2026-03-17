@@ -1,10 +1,15 @@
 import { getMongoClient } from "@/lib/mongodb"
+import { getMockEmailsForTeam } from "@/src/data/mock-teams"
 export const runtime = "nodejs"
 
 function convertDateFormat(dateStr: string): string {
   if (!dateStr) return ""
   const [year, month, day] = dateStr.split("-")
   return `${month}/${day}/${year}`
+}
+
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 export async function GET(request: Request) {
@@ -45,6 +50,35 @@ export async function GET(request: Request) {
       const expertsArray = experts.split(",").filter((e) => e.trim())
       if (expertsArray.length > 0) {
         filter["assignedTo"] = { $in: expertsArray }
+      }
+    }
+
+    const teamsParam = searchParams.get("teams")
+    const teams = [
+      ...(teamsParam ? teamsParam.split(",").map((s) => s.trim()).filter(Boolean) : []),
+      ...searchParams.getAll("team").map((s) => s.trim()).filter(Boolean),
+    ]
+    if (teams.length > 0) {
+      const allowedEmails = Array.from(
+        new Set(teams.flatMap((t) => getMockEmailsForTeam(t)).filter(Boolean))
+      )
+      const allowedSet = new Set(allowedEmails.map((e) => e.toLowerCase()))
+
+      const asRegexes = (emails: string[]) =>
+        emails.map((e) => new RegExp(`^${escapeRegex(e)}$`, "i"))
+
+      const currentAssigned = filter["assignedTo"]
+      if (!currentAssigned) {
+        filter["assignedTo"] = { $in: asRegexes(allowedEmails) }
+      } else if (typeof currentAssigned === "string") {
+        const s = currentAssigned.trim().toLowerCase()
+        filter["assignedTo"] = allowedSet.has(s) ? { $in: asRegexes([s]) } : { $in: [] }
+      } else if (currentAssigned && typeof currentAssigned === "object" && Array.isArray(currentAssigned.$in)) {
+        const existing = currentAssigned.$in
+          .map((v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : ""))
+          .filter(Boolean)
+        const intersection = existing.filter((e: string) => allowedSet.has(e))
+        filter["assignedTo"] = { $in: asRegexes(intersection) }
       }
     }
 

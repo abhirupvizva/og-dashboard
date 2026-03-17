@@ -60,6 +60,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <a href="/active-candidates">
+                <Users className="h-4 w-4" />
+                <span>Active Candidates</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
               <a href="/body-view">
                 <Inbox className="h-4 w-4" />
                 <span>Body View</span>

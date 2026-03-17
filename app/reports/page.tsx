@@ -8,12 +8,34 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Download, FileSpreadsheet, Loader2 } from "lucide-react"
+import { getMockTeamNames } from "@/src/data/mock-teams"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
+function toggleValue(selected: string[], value: string) {
+  if (selected.includes(value)) return selected.filter((v) => v !== value)
+  return [...selected, value]
+}
+
+function filterLabel(label: string, selected: string[]) {
+  if (selected.length === 0) return `${label}: All`
+  if (selected.length === 1) return `${label}: ${selected[0]}`
+  return `${label}: ${selected.length} selected`
+}
 
 export default function ReportsPage() {
   const [loading, setLoading] = useState(false)
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [status, setStatus] = useState("all")
+  const [teamFilter, setTeamFilter] = useState<string[]>([])
 
   const generateReport = async () => {
     setLoading(true)
@@ -23,6 +45,7 @@ export default function ReportsPage() {
       if (dateFrom) params.append("dateFrom", dateFrom)
       if (dateTo) params.append("dateTo", dateTo)
       if (status !== "all") params.append("status", status)
+      if (teamFilter.length > 0) params.append("teams", teamFilter.join(","))
 
       const response = await fetch(`/api/interviews?${params.toString()}`)
       const data = await response.json()
@@ -131,6 +154,39 @@ export default function ReportsPage() {
                     <SelectItem value="Pending">Pending</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Team</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between bg-background">
+                      <span className="truncate">{filterLabel("Team", teamFilter)}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[320px]">
+                    <DropdownMenuLabel>Team</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        setTeamFilter([])
+                      }}
+                    >
+                      Clear
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {getMockTeamNames().map((t) => (
+                      <DropdownMenuCheckboxItem
+                        key={t}
+                        checked={teamFilter.includes(t)}
+                        onCheckedChange={() => setTeamFilter((prev) => toggleValue(prev, t))}
+                      >
+                        {t}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
             <CardFooter>

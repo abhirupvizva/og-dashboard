@@ -10,6 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import DashboardLayout from "@/components/dashboard-layout"
 import { useFilters } from "@/src/hooks/useCachedData"
+import { Input } from "@/components/ui/input"
+import { getMockTeamNames } from "@/src/data/mock-teams"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface TaggedInterview {
   _id: string
@@ -23,6 +34,7 @@ interface TaggedInterview {
 export default function TagsPage() {
   const [interviews, setInterviews] = useState<TaggedInterview[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Pagination
@@ -33,6 +45,9 @@ export default function TagsPage() {
   // Filters
   const [year, setYear] = useState<string>("")
   const [month, setMonth] = useState<string>("")
+  const [dateFrom, setDateFrom] = useState<string>("")
+  const [dateTo, setDateTo] = useState<string>("")
+  const [teamFilter, setTeamFilter] = useState<string[]>([])
   const [mainExpertFilter, setMainExpertFilter] = useState("all")
   const [taggedExpertFilter, setTaggedExpertFilter] = useState("all")
   const didInitialFetch = useRef(false)
@@ -47,6 +62,17 @@ export default function TagsPage() {
     setMonth(String(now.getMonth() + 1).padStart(2, "0"))
   }, [])
 
+  const toggleValue = (selected: string[], value: string) => {
+    if (selected.includes(value)) return selected.filter((v) => v !== value)
+    return [...selected, value]
+  }
+
+  const filterLabel = (label: string, selected: string[]) => {
+    if (selected.length === 0) return `${label}: All`
+    if (selected.length === 1) return `${label}: ${selected[0]}`
+    return `${label}: ${selected.length} selected`
+  }
+
   const fetchTaggedInterviews = useCallback(async () => {
     if (!year || !month) return
 
@@ -57,6 +83,9 @@ export default function TagsPage() {
       params.append("limit", limit.toString())
       params.append("year", year)
       params.append("month", month)
+      if (dateFrom) params.append("dateFrom", dateFrom)
+      if (dateTo) params.append("dateTo", dateTo)
+      if (teamFilter.length > 0) params.append("teams", teamFilter.join(","))
       if (mainExpertFilter !== "all") params.append("mainExpert", mainExpertFilter)
       if (taggedExpertFilter !== "all") params.append("taggedExpert", taggedExpertFilter)
 
@@ -71,7 +100,71 @@ export default function TagsPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, limit, mainExpertFilter, taggedExpertFilter, year, month])
+  }, [currentPage, dateFrom, dateTo, limit, mainExpertFilter, taggedExpertFilter, teamFilter, year, month])
+
+  const exportCsv = useCallback(async () => {
+    if (!year || !month) return
+    setExporting(true)
+    const csvEscape = (v: unknown) => {
+      const s = (v ?? "").toString()
+      return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+
+    try {
+      const exportLimit = 200
+      const allRows: TaggedInterview[] = []
+      let page = 1
+      let total = 1
+
+      while (page <= total) {
+        const params = new URLSearchParams()
+        params.append("page", page.toString())
+        params.append("limit", exportLimit.toString())
+        params.append("year", year)
+        params.append("month", month)
+        if (dateFrom) params.append("dateFrom", dateFrom)
+        if (dateTo) params.append("dateTo", dateTo)
+        if (teamFilter.length > 0) params.append("teams", teamFilter.join(","))
+        if (mainExpertFilter !== "all") params.append("mainExpert", mainExpertFilter)
+        if (taggedExpertFilter !== "all") params.append("taggedExpert", taggedExpertFilter)
+
+        const response = await fetch(`/api/tags?${params.toString()}`)
+        if (!response.ok) throw new Error("Failed to export data")
+        const data = await response.json()
+        const items: TaggedInterview[] = Array.isArray(data.interviews) ? data.interviews : []
+        allRows.push(...items)
+        total = data.pagination?.totalPages ?? 1
+        page += 1
+        if (items.length === 0) break
+      }
+
+      const headers = ["Title", "Expert", "Taged Expert"]
+      const lines = [
+        headers.join(","),
+        ...allRows.map((i) =>
+          [
+            csvEscape(i.subject || ""),
+            csvEscape(i.mainExpert || ""),
+            csvEscape((i.taggedExperts || []).join("; ")),
+          ].join(",")
+        ),
+      ]
+      const filename = `tagged-interviews-${new Date().toISOString().replace(/[:]/g, "-").replace(".000Z", "Z")}.csv`
+      const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to export")
+    } finally {
+      setExporting(false)
+    }
+  }, [dateFrom, dateTo, mainExpertFilter, month, taggedExpertFilter, teamFilter, year])
 
   useEffect(() => {
     if (didInitialFetch.current) return
@@ -138,6 +231,58 @@ export default function TagsPage() {
                 </SelectContent>
               </Select>
 
+            <div className="flex flex-col gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                className="bg-background border-input w-[160px]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+                className="bg-background border-input w-[160px]"
+              />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-[200px] justify-between">
+                  <span className="truncate">{filterLabel("Team", teamFilter)}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[320px]">
+                <DropdownMenuLabel>Team</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    setTeamFilter([])
+                    setCurrentPage(1)
+                  }}
+                >
+                  Clear
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {getMockTeamNames().map((t) => (
+                  <DropdownMenuCheckboxItem
+                    key={t}
+                    checked={teamFilter.includes(t)}
+                    onCheckedChange={() => {
+                      setTeamFilter((prev) => toggleValue(prev, t))
+                      setCurrentPage(1)
+                    }}
+                  >
+                    {t}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <div className="flex flex-col gap-2 w-[200px]">
               <Select value={mainExpertFilter} onValueChange={(val) => { setMainExpertFilter(val); setCurrentPage(1); }}>
                 <SelectTrigger>
@@ -169,6 +314,11 @@ export default function TagsPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={loading || exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? "Exporting..." : "Export"}
+            </Button>
 
             <Button variant="outline" size="icon" onClick={fetchTaggedInterviews} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
