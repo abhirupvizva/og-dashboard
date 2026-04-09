@@ -12,15 +12,15 @@ import {
 } from "@/components/ui/table"
 
 const EMPLOYEES = [
-  { "Employee Name": "Aakash Sharma", "Employee ID": "#VNCR0389", "Team Lead": "Prateek Narvariya" },
-  { "Employee Name": "Eklavya", "Employee ID": "#VNCR0446", "Team Lead": "Prateek Narvariya" },
-  { "Employee Name": "Aman Agnihotri", "Employee ID": "#VG0308", "Team Lead": "Rujuwal Garg" },
-  { "Employee Name": "Amartya Kumar", "Employee ID": "#1702", "Team Lead": "Rujuwal Garg" },
-  { "Employee Name": "Varsha Sahu", "Employee ID": "#VNCR0394", "Team Lead": "Prateek Narvariya" },
-  { "Employee Name": "Priyanshu Jana", "Employee ID": "#VNCR0444", "Team Lead": "Prateek Narvariya" },
-  { "Employee Name": "Abhirup Kumar", "Employee ID": "#VNCR0447", "Team Lead": "Prateek Narvariya" },
-  { "Employee Name": "Rahul Agarwal", "Employee ID": "#VG0267", "Team Lead": "Rujuwal Garg" },
-  { "Employee Name": "Aditya Sharma", "Employee ID": "#VG0262", "Team Lead": "Rujuwal Garg" }
+  { "Employee Name": "Aakash Sharma", "Employee ID": "#VNCR0389", "Team Lead": "Prateek Narvariya", email: "Aakash.sharma@vizvainc.com" },
+  { "Employee Name": "Eklavya", "Employee ID": "#VNCR0446", "Team Lead": "Prateek Narvariya", email: "Eklavya.prasad@vizvainc.com" },
+  { "Employee Name": "Aman Agnihotri", "Employee ID": "#VG0308", "Team Lead": "Rujuwal Garg", email: "aman.agnihotri@vizvainc.com" },
+  { "Employee Name": "Amartya Kumar", "Employee ID": "#1702", "Team Lead": "Rujuwal Garg", email: "amartya.kumar@vizvainc.com" },
+  { "Employee Name": "Varsha Sahu", "Employee ID": "#VNCR0394", "Team Lead": "Prateek Narvariya", email: "varsha.sahu@vizvainc.com" },
+  { "Employee Name": "Priyanshu Jana", "Employee ID": "#VNCR0444", "Team Lead": "Prateek Narvariya", email: "priyanshu.jana@vizvainc.com" },
+  { "Employee Name": "Abhirup Kumar", "Employee ID": "#VNCR0447", "Team Lead": "Prateek Narvariya", email: "Abhirup.kumar@vizvainc.com" },
+  { "Employee Name": "Rahul Agarwal", "Employee ID": "#VG0267", "Team Lead": "Rujuwal Garg", email: "rahul.agarwal@vizvainc.com" },
+  { "Employee Name": "Aditya Sharma", "Employee ID": "#VG0262", "Team Lead": "Rujuwal Garg", email: "aditya.sharma@vizvainc.com" }
 ]
 
 function getInitials(name: string) {
@@ -183,7 +183,7 @@ export function VintageDashboard({ onNew, onEdit, reviews = [], fetchReviews, lo
             {EMPLOYEES.map((emp, idx) => (
               <button
                 key={idx}
-                onClick={() => onNew({ empName: emp["Employee Name"], empId: emp["Employee ID"], teamLead: emp["Team Lead"] })}
+                onClick={() => onNew({ empName: emp["Employee Name"], empId: emp["Employee ID"], teamLead: emp["Team Lead"], email: emp.email })}
                 className="group flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 transition-all duration-150 cursor-pointer text-left"
               >
                 <div className={`w-9 h-9 shrink-0 rounded-full ${AVATAR_COLORS[idx % AVATAR_COLORS.length]} flex items-center justify-center text-white text-xs font-black`}>

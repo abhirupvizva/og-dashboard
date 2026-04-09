@@ -7,7 +7,7 @@ import * as z from "zod"
 import {
   ArrowLeft, Calculator, Download, Save, RefreshCw,
   User, Building2, CreditCard, UserCheck, CalendarDays, Palmtree,
-  TrendingUp, Target, BarChart3, Award
+  TrendingUp, Target, BarChart3, Award, Zap, Loader2
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -79,6 +79,9 @@ export function VintageForm({ initialData, onBack, onSave }: {
   onSave: (data: FormValues) => Promise<void>
 }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isFetchingStats, setIsFetchingStats] = React.useState(false)
+  const [statsFetched, setStatsFetched] = React.useState(false)
+  const employeeEmail = initialData?.email || ""
 
   const defaultKpiCategories = [
     "Performance Review",
@@ -142,6 +145,33 @@ export function VintageForm({ initialData, onBack, onSave }: {
       form.setValue("notDoneInterviews", notDoneInterviewsCalc)
     }
   }, [notDoneInterviewsCalc, form])
+
+  // Auto-fetch interview stats from MongoDB when email + month are available
+  const watchedMonth = useWatch({ control: form.control, name: "performanceMonth" })
+
+  const fetchInterviewStats = React.useCallback(async (email: string, month: string) => {
+    if (!email || !month || !/^\d{4}-\d{2}$/.test(month)) return
+    setIsFetchingStats(true)
+    try {
+      const res = await fetch(`/api/1on1/interview-stats?email=${encodeURIComponent(email)}&month=${encodeURIComponent(month)}`)
+      if (!res.ok) throw new Error("Failed to fetch stats")
+      const data = await res.json()
+      form.setValue("interviewsReceived", data.received ?? 0)
+      form.setValue("completedInterviews", data.completed ?? 0)
+      form.setValue("rescheduledCancelledInterviews", data.rescheduledCancelled ?? 0)
+      setStatsFetched(true)
+    } catch (err) {
+      console.error("Failed to fetch interview stats:", err)
+    } finally {
+      setIsFetchingStats(false)
+    }
+  }, [form])
+
+  React.useEffect(() => {
+    if (employeeEmail && watchedMonth && !isEditing) {
+      fetchInterviewStats(employeeEmail, watchedMonth)
+    }
+  }, [employeeEmail, watchedMonth, isEditing, fetchInterviewStats])
 
   const compRate = effectiveInterviews > 0 ? (completedInterviews / effectiveInterviews) * 100 : 0
   const poAchieveRate = poKpi > 0 ? (poCount / poKpi) * 100 : 0
@@ -374,11 +404,90 @@ export function VintageForm({ initialData, onBack, onSave }: {
                 </h2>
               </div>
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-                <ReadOnlyField label="Branch" value={form.watch("branch")} icon={Building2} />
-                <ReadOnlyField label="Employee Name" value={form.watch("empName")} icon={User} />
-                <ReadOnlyField label="Department" value={form.watch("department")} icon={Building2} />
-                <ReadOnlyField label="Employee ID" value={form.watch("empId")} icon={CreditCard} />
-                <ReadOnlyField label="Team Lead" value={form.watch("teamLead")} icon={UserCheck} />
+                {isEditing ? (
+                  <ReadOnlyField label="Branch" value={form.watch("branch")} icon={Building2} />
+                ) : (
+                  <FormField control={form.control} name="branch" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <Building2 className="w-3 h-3" />
+                        Branch
+                      </FormLabel>
+                      <FormControl>
+                        <Input className="h-10 border-slate-200 bg-white focus-visible:ring-blue-500 focus-visible:ring-2 text-sm" placeholder="e.g. GGR" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+
+                {isEditing ? (
+                  <ReadOnlyField label="Employee Name" value={form.watch("empName")} icon={User} />
+                ) : (
+                  <FormField control={form.control} name="empName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <User className="w-3 h-3" />
+                        Employee Name
+                      </FormLabel>
+                      <FormControl>
+                        <Input className="h-10 border-slate-200 bg-white focus-visible:ring-blue-500 focus-visible:ring-2 text-sm" placeholder="Full name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+
+                {isEditing ? (
+                  <ReadOnlyField label="Department" value={form.watch("department")} icon={Building2} />
+                ) : (
+                  <FormField control={form.control} name="department" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <Building2 className="w-3 h-3" />
+                        Department
+                      </FormLabel>
+                      <FormControl>
+                        <Input className="h-10 border-slate-200 bg-white focus-visible:ring-blue-500 focus-visible:ring-2 text-sm" placeholder="e.g. Technical" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+
+                {isEditing ? (
+                  <ReadOnlyField label="Employee ID" value={form.watch("empId")} icon={CreditCard} />
+                ) : (
+                  <FormField control={form.control} name="empId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <CreditCard className="w-3 h-3" />
+                        Employee ID
+                      </FormLabel>
+                      <FormControl>
+                        <Input className="h-10 border-slate-200 bg-white focus-visible:ring-blue-500 focus-visible:ring-2 text-sm" placeholder="e.g. #VNCR0389" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+
+                {isEditing ? (
+                  <ReadOnlyField label="Team Lead" value={form.watch("teamLead")} icon={UserCheck} />
+                ) : (
+                  <FormField control={form.control} name="teamLead" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <UserCheck className="w-3 h-3" />
+                        Team Lead
+                      </FormLabel>
+                      <FormControl>
+                        <Input className="h-10 border-slate-200 bg-white focus-visible:ring-blue-500 focus-visible:ring-2 text-sm" placeholder="Team lead name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
 
                 <FormField control={form.control} name="performanceMonth" render={({ field }) => (
                   <FormItem>
@@ -418,12 +527,72 @@ export function VintageForm({ initialData, onBack, onSave }: {
 
             {/* Section 2: Interview KPI Metrics */}
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
                   <Calculator className="w-4 h-4 text-blue-600" />
                   Interview KPI Metrics
                 </h2>
+                <div className="flex items-center gap-2">
+                  {isFetchingStats && (
+                    <span className="flex items-center gap-1.5 text-xs text-blue-600 font-medium animate-pulse">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Fetching from DB…
+                    </span>
+                  )}
+                  {statsFetched && !isFetchingStats && (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                      <Zap className="w-3 h-3" />
+                      Auto-filled
+                    </span>
+                  )}
+                  {employeeEmail && !isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => fetchInterviewStats(employeeEmail, form.getValues("performanceMonth"))}
+                      disabled={isFetchingStats}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 border border-blue-200 transition-all duration-150 cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isFetchingStats ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </button>
+                  )}
+                </div>
               </div>
+              {/* Month selection tabs */}
+              {employeeEmail && !isEditing && (
+                <div className="px-6 py-3 border-b border-slate-100 bg-white flex items-center gap-2 overflow-x-auto">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Month:</span>
+                  {(() => {
+                    const months: string[] = []
+                    const now = new Date()
+                    for (let i = 5; i >= 0; i--) {
+                      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
+                    }
+                    return months.map((m) => {
+                      const [y, mo] = m.split("-")
+                      const label = new Date(parseInt(y), parseInt(mo) - 1).toLocaleString("en-US", { month: "short", year: "numeric" })
+                      const isActive = watchedMonth === m
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => {
+                            form.setValue("performanceMonth", m)
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer shrink-0 ${
+                            isActive
+                              ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
+                              : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700 border border-slate-200"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })
+                  })()}
+                </div>
+              )}
               <div className="p-6 space-y-5">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <FormField control={form.control} name="interviewsReceived" render={({ field }) => (

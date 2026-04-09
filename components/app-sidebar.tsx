@@ -15,6 +15,16 @@ import {
 } from "@/components/ui/sidebar"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [role, setRole] = React.useState<string>("admin"); // Default to admin for SSR, client checks next
+
+  React.useEffect(() => {
+    // Read the auth_role cookie on the client side
+    const match = document.cookie.match(/(^| )auth_role=([^;]+)/);
+    if (match) {
+      setRole(match[2]);
+    }
+  }, []);
+
   return (
     <Sidebar {...props} className="border-r border-border bg-sidebar">
       <SidebarHeader className="bg-sidebar">
@@ -31,68 +41,72 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarSeparator className="bg-sidebar-border" />
       <SidebarContent className="bg-sidebar">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/">
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {role !== "1on1_viewer" && (
+            <>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <a href="/">
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/replies">
-                <Mail className="h-4 w-4" />
-                <span>Replies</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <a href="/replies">
+                    <Mail className="h-4 w-4" />
+                    <span>Replies</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/tasks">
-                <ListChecks className="h-4 w-4" />
-                <span>Tasks</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <a href="/tasks">
+                    <ListChecks className="h-4 w-4" />
+                    <span>Tasks</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/active-candidates">
-                <Users className="h-4 w-4" />
-                <span>Active Candidates</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <a href="/active-candidates">
+                    <Users className="h-4 w-4" />
+                    <span>Active Candidates</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/body-view">
-                <Inbox className="h-4 w-4" />
-                <span>Body View</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <a href="/body-view">
+                    <Inbox className="h-4 w-4" />
+                    <span>Body View</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/first-assigned">
-                <UserCheck className="h-4 w-4" />
-                <span>KPI COUNT</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <a href="/first-assigned">
+                    <UserCheck className="h-4 w-4" />
+                    <span>KPI COUNT</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/reports">
-                <FileText className="h-4 w-4" />
-                <span>Reports</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <a href="/reports">
+                    <FileText className="h-4 w-4" />
+                    <span>Reports</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </>
+          )}
 
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
@@ -103,28 +117,32 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="/tags">
-                <Tags className="h-4 w-4" />
-                <span>TAG</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {role !== "1on1_viewer" && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                <a href="/tags">
+                  <Tags className="h-4 w-4" />
+                  <span>TAG</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="bg-sidebar">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <a href="#">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      {role !== "1on1_viewer" && (
+        <SidebarFooter className="bg-sidebar">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                <a href="#">
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      )}
       <SidebarRail />
     </Sidebar>
   )
